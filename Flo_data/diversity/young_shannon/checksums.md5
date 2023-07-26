@@ -1,0 +1,15 @@
+ab5ff63d70217ba65f65ece1efa53834  VERSION
+a152264b36b4f8d14bec697130dd9178  metadata.yaml
+bb74f940092763cc6a2b38cc9a735f61  data/alpha-diversity.tsv
+ab5ff63d70217ba65f65ece1efa53834  provenance/VERSION
+18bdb8bec95a8ef4aa28a5b7e8325f09  provenance/citations.bib
+a152264b36b4f8d14bec697130dd9178  provenance/metadata.yaml
+270ac42209cd2e254b60f034384a7071  provenance/action/action.yaml
+ab5ff63d70217ba65f65ece1efa53834  provenance/artifacts/4bb5eec9-2444-4ae7-97ff-d97dbdfab0c1/VERSION
+b766ace237f773d7f6ad600690d387d3  provenance/artifacts/4bb5eec9-2444-4ae7-97ff-d97dbdfab0c1/citations.bib
+e6e80cd40bbdad1590052d0c25d50970  provenance/artifacts/4bb5eec9-2444-4ae7-97ff-d97dbdfab0c1/metadata.yaml
+3e02bf24fd0be2a228c7e1942e03f4f9  provenance/artifacts/4bb5eec9-2444-4ae7-97ff-d97dbdfab0c1/action/action.yaml
+ab5ff63d70217ba65f65ece1efa53834  provenance/artifacts/8b3e2cb4-f1aa-41d7-b8f9-7122b0247d8d/VERSION
+ad8dcf5681dc59c468b7defc1256d0d8  provenance/artifacts/8b3e2cb4-f1aa-41d7-b8f9-7122b0247d8d/citations.bib
+45e8e9f86a8587dd728ea2d7695faf61  provenance/artifacts/8b3e2cb4-f1aa-41d7-b8f9-7122b0247d8d/metadata.yaml
+9f09e7371a88d6be24ae66032bd753ef  provenance/artifacts/8b3e2cb4-f1aa-41d7-b8f9-7122b0247d8d/action/action.yaml
