@@ -1,2 +1,13 @@
 .ipynb_checkpoints/
 .virtual_documents/
+Flo_data/.ipynb_checkpoints
+Flo_data/Youngblut_ASVs_taxonomy_filt.txt
+Flo_data/Youngblut_ASVs_counts_filt.txt
+Flo_data/Youngblut_Metadata.txt
+Flo_data/.Rhistory
+Flo_data/.ipynb_checkpoints
+Flo_data/Check.R
+Flo_data/.DS_Store
+Flo_data/diversity/young_shannon/
+Flo_data/diversity/young_simpson/
+Flo_data/diversity/young_table.qza
