@@ -1,20 +1,20 @@
 execution:
-    uuid: 7549835a-4d0d-4492-aa22-09db8f096186
+    uuid: eb8fde86-85ff-4714-8808-67aa39947b71
     runtime:
-        start: 2023-06-26T20:25:12.273731-07:00
-        end: 2023-06-26T20:25:12.685156-07:00
-        duration: 411425 microseconds
+        start: 2023-08-09T12:02:31.972656-07:00
+        end: 2023-08-09T12:02:32.388146-07:00
+        duration: 415490 microseconds
 
 action:
     type: pipeline
     plugin: !ref 'environment:plugins:diversity'
     action: alpha
     inputs:
-    -   table: cbfa2df8-d680-4281-a6a6-3d90bd8e20f5
+    -   table: cdf17417-eed3-4052-be12-7a37860c0be7
     parameters:
     -   metric: simpson
     output-name: alpha_diversity
-    alias-of: 25dd134b-f880-4ebf-8887-9814bcaf749e
+    alias-of: 93f07293-3aec-4dd0-892e-e1d6863239a6
 
 environment:
     platform: linux-x86_64
