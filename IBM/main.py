@@ -1,11 +1,14 @@
-# -*- coding: utf-8 -*-
-from os.path import expanduser
-import sys
+import os 
 import numpy as np
+import statsmodels.tsa.stattools as sta
+import random
+import time
 from multiprocessing import Pool
+from os.path import expanduser
 
-mydir = expanduser(".../IBM/")
+mydir = expanduser("/proj/gibbons/kramos/github/IBT-and-the-Gut-Microbiome/IBM/")
 GenPath = mydir + 'data/'
+os.environ['OPENBLAS_NUM_THREADS'] = '1'
 
 def headings():
     headings = 'sim,'
@@ -14,7 +17,7 @@ def headings():
     headings += 'TotalAbundance,'
     headings += 'SpeciesRichness,'
     headings += 'Simpson,'
-    headings += 'Simpson_e'
+    headings += 'Simpson_e' 
 
     return headings
 
@@ -36,138 +39,159 @@ def simpson_div(rad):
         
     D = 1.0/D
     return D, D/len(rad) # this latter value is simpson's evenness
-    
 
-def run_model(sim, size, seed=None):
-    
-    '''
-    lgp: the log-series shape parameter; determines the structure of your regional pool
-    imr: immigration rate. The number of individuals flowing in per time step. 
-    rpr: General reproductive rate. The fraction of the community that reproduces each time step.
-    dtr: Random chance of death. The fraction of the community that dies each time step. 
-    
-    '''
-    lgp=np.random.RandomState(seed).uniform(low=0.99, high=1.0, size = None)
-    imr = np.random.RandomState(seed).randint(1,10)
-    rpr=np.random.RandomState(seed).uniform(low=0.01, high=0.1, size = None) 
-    dtr=np.random.RandomState(seed).uniform(low=0.01, high=0.1, size=None)
-    
-    if size=='small':
-        length = np.random.RandomState(seed).uniform(low=10, high=20)
-        
-    else: 
-        length = np.random.RandomState(seed).uniform(low=1, high=100)
+def run_model(sim, lgp, im, r, length, flow_rate):
+    ################# DECLARE VARIABLES/LISTS #########################################
 
-    iteration = 0 #counter for each simulation
-    
-    while iteration < 10*length:
-        if iteration == 0:
-            RAD[sim] = [],[] # add to rad file
-        
-        ''' Flow (directional passive dispersal) '''
-        
-        xcoords = RAD[sim,0]
-        xcoords[:] = [i+1 for i in xcoords]
-        
-        
-        ''' Immigration '''
-        
-        # Immigration from a log-series distributed regional pool. The randomly drawn numbers are 
-        # the species IDs. On average, there will be more 1's than 2's, more 2's than 3's, etc.
-        immigrants = np.random.RandomState(seed).logseries(lgp, size=imr)  
-        
-        # Add the immigrants to the local community
-        community=RAD[sim,1]
-        community.extend(immigrants)
-        
-        # Make the immigrants enter at the inlet
-        xcoords.extend([0]*len(immigrants))
+    COMM = np.empty(shape=1, dtype='uint16')   # community list
+    COORDS = np.empty(shape=1, dtype='uint16') # coordinates ... indices correspond to COMM
+    Ns = np.empty(shape=1, dtype='uint16')     # list to track total abundance
+    Ss = np.empty([], dtype='uint16')     # list to track taxa richness
 
-        ''' Emmigration''' 
-        
-        indices = [i for i, v in enumerate(xcoords) if v > length] # find every individual that flowed out of bounds
-        
-        for i in sorted(indices, reverse=True):
-            del community[i]
-            del xcoords[i]
-        
-        ''' Reproduction '''
-        
-        n = int(round(rpr * len(community))) # number of bouncing baby Bacilli 
-        N = int(len(community))
-
-        indices = np.random.RandomState(seed).choice(list(range(N)), size=n, replace=False) # choosing mothers at random
-        bbb = [ community[i] for i in indices]
-        bbb_x = [ xcoords[i] for i in indices]
-        community.extend(bbb)
-        xcoords.extend(bbb_x)
-
-        ''' Death '''
-
-        n = int(round(dtr * len(community))) # number of members in the community that will die
-
-        indices = np.random.RandomState(seed).choice(list(range(N)), size=n, replace=False) # choosing deaths at random
-        
-        for i in sorted(indices, reverse=True):
-            del community[i]
-            del xcoords[i]
+    Nstationary = 'No' # will indicate whether stationarity in N has been reached
+    Sstationary = 'No' # will indicate whether stationarity in S has been reached
 
 
-        iteration += 1
-        RAD.flush()
+    ################# SIMULATION START #########################################
 
-         
+    start_time = time.time()
+    time_step = 0
+    while time_step == time_step: 
         
-        if iteration%10 == 0:
-            print('Instance:', sim, ' iteration:', iteration, '|   N:', len(community), 'Length:', length)
+
+        ################# PROCESSES #########################################
+        
+        processes = ['immigration', 'reproduction', 'flow']
+        seed = None
+        random.seed(seed) #initialize a new seed per time step
+        random.shuffle(processes)
+        # The order in which immigration, reproduction, and flow/emigration occur
+        # is randomized in each time step ... to prevent systemic artifacts
+        
+        for p in processes:
+            if p == 'immigration':
+                immigrants = np.random.RandomState(seed).logseries(lgp, size = im).astype('uint16') # immigration from a log-series metacommunity ... as in Hubbell 2001
+                COMM = np.concatenate((COMM, immigrants))
+                COORDS = np.concatenate((COORDS, np.array([0]* im, dtype = 'uint16'))) # individuals enter at the upstream edge
+                
+            elif p == 'reproduction':
+                n = int(round(r * len(COMM))) # number of bouncing baby Bacilli 
+                N = int(len(COMM))
+
+                if n > 0:
+                    indices = random.sample(list(range(N)), n) # choosing mothers at random
+                    bbb = np.array(COMM)[indices] # Filter out non-selected indices
+                    bbb_x = np.array(COORDS)[indices] # Filter out non-selected indices
+                    COMM = np.concatenate((COMM, bbb))
+                    COORDS=np.concatenate((COORDS, bbb_x))
+                
+            elif p == 'flow': # add one unit to each individual's current x-coord
+                COORDS = COORDS + flow_rate
+                indices = COORDS <= length # remove individuals who have flown out of the system
+                COMM = COMM[indices]
+                COORDS = COORDS[indices]
+        
+        
+        ################# CALCULATIONS #########################################
+        
+        N = len(COMM)
+        Ns = np.append(Ns, N).astype('uint16')
+        S = len(list(set(COMM)))
+        Ss = np.append(Ss, S).astype('uint16')
+        
+        
+        ################# CHECK FOR STATIONARITY #########################################
+        
+        # Once we've burned through 1000 time steps, check for stationarity in N and S
+        
+        if len(Ns) > 1000:
+            '''
+            Augmented Dickey-Fuller test. Tests for stationarity (i.e., serial autocorrelation).
+            https://www.statsmodels.org/dev/generated/statsmodels.tsa.stattools.adfuller.html
             
-            # Code that differs by the 'big' and 'small' parameter so I can artificially extend the community if I want it to be bigger
-            if size == 'small':
-                rad =[] 
-                sp_ls = list(set(community))
-                for i in sp_ls:
-                    rad.append(community.count(i))
-                rad = sorted(rad)
-                div, ev = simpson_div(rad)
-                
-                # Per sim, record abundance, species richness, simpson, evenness
-                OUT = open(GenPath + 'simData.csv', 'a')
-                outlist = [sim, iteration, length, len(community), len(list(set(community))), div, ev]
-                outlist = str(outlist).strip('[]')
-                outlist = outlist.replace(" ", "")
-                print(outlist, file=OUT)
-                
-            else: 
-                big_com=community.copy()
-                for i in community:
-                    big_com.extend([i]*100) #for each community member, add 100 more as representatives
-                rad =[] 
-                sp_ls = list(set(big_com))
-                for i in sp_ls:
-                    rad.append(big_com.count(i))
-                rad = sorted(rad)
-                div, ev = simpson_div(rad)
-                
-                # Per sim, record abundance, species richness, simpson, evenness
-                OUT = open(GenPath + 'simData.csv', 'a')
-                outlist = [sim, iteration, length*100, len(big_com), len(list(set(big_com))), div, ev]
-                outlist = str(outlist).strip('[]')
-                outlist = outlist.replace(" ", "")
-                print(outlist, file=OUT)
+            We'll test for stationarity with respect to N and S.
+            '''
+            
+            AugmentedDickeyFuller = sta.adfuller(Ns)
+            val, pN = AugmentedDickeyFuller[0:2]
+            nobs = AugmentedDickeyFuller[3]
 
-    
-if __name__ == '__main__':
-    # Prompt user for parameters
-    sims=int(input("How many simulations do you want to run?\n"))
-    size=input("Do you want to run large- or small-scale simulations? Please enter: 'large' or 'small'\n").lower().strip()
-    
-    OUT = open(GenPath + "simData.csv", "w+")
-    h = headings()
-    print(h, file=OUT)
-    
-    RAD = np.memmap(GenPath +"RAD.mymemmap", mode = 'w+', shape = (sims,2), dtype=object) # Creating an array with n=sims rows, two cols
-    pool = Pool(processes=20)
-    iterable=[]
-    for i in range(0,sims):
-        iterable.append([i, size])
-    pool.starmap(run_model, iterable)
+            AugmentedDickeyFuller = sta.adfuller(Ss)
+            val, pS = AugmentedDickeyFuller[0:2]
+
+            if pN > 0.05: 
+                Nstationary = 'No'
+
+            elif pN <= 0.05:
+                Nstationary = 'Yes'
+                    
+            if pS > 0.05: 
+                Sstationary = 'No'
+
+            elif pS <= 0.05:
+                Sstationary = 'Yes'
+                
+            Ns = np.delete(Ns, 0) # ensuring that the adfuller test is conducted on N across 1K time steps
+            Ss = np.delete(Ss, 0) # ensuring that the adfuller test is conducted on S across 1K time steps
+            
+            if Nstationary == 'Yes' and Sstationary == 'Yes': # Stationarity achieved. 
+                unique, counts = np.unique(COMM, return_counts=True)
+                sp_d = dict(zip(unique, counts))
+                rad=list(sp_d.values())
+                rad = sorted(rad)
+                div, ev = simpson_div(rad)
+                
+                # Per sim, record abundance, species richness, simpson, evenness
+                OUT = open(GenPath + file_name, 'a+')
+                outlist = [sim, time_step, length, N, S, div, ev]
+                outlist = str(outlist).strip('[]')
+                outlist = outlist.replace(" ", "")
+
+                print(time_step, ':  N=', N, '| S=', S, ' |  stationarity in N:', 
+                    Nstationary, ' |  stationarity in S:', Sstationary)
+                print(outlist, file=OUT)
+                print('Stationarity achieved in N and S across 1000 time steps.')
+                end_time = time.time()
+                print("Run time = {:.3f} seconds".format(end_time - start_time))
+
+                break # Kill the infinite loop
+                
+                
+        ################# PRINT SOME STUFF AFTER EACH TIME STEP ##################################
+        
+        print(time_step, ':  N=', N, '| S=', S, ' |  stationarity in N:', 
+            Nstationary, ' |  stationarity in S:', Sstationary)
+        
+        time_step += 1
+
+
+sims=10
+file_name = "test.csv"
+OUT = open(GenPath + file_name, "w")
+h = headings()
+print(h, file = OUT)
+
+iterable = []
+
+for i in range(0, sims): # i=sim
+    seed = None
+    # Generate parameters for each simulation
+    lgp = 0.9999 # log-series parameter. # The closer it is to 1.0, the more species you'll get from a sample 
+    low_im = 1 # immigration rate = individuals inflowing per time step
+    med_im = 25
+    high_im = 50
+    low_r = 0.001 # per capita probability of reproduction in a given time step 
+    med_r = 0.01
+    high_r = 0.1
+    flow_rate = 1 # units of distance each individual flows downstream per time step
+    # Decide which parameters to move forward with
+    im=med_im
+    r=med_r
+    length = np.random.RandomState(seed).uniform(low=np.log(1), high=np.log(1000)) # This parameter determines the scale of your simulations
+    iterable.append([i, lgp, im, r, np.exp(length), flow_rate])
+
+pool= Pool(processes=10)
+pool.starmap(run_model, iterable)
+
+
+
