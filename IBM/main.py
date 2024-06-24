@@ -165,8 +165,8 @@ def run_model(sim, lgp, im, r, length, flow_rate):
         time_step += 1
 
 
-sims=10
-file_name = "test.csv"
+sims=10 # Determines how many simulations you will run
+file_name = "Name_your_file.csv" # name your csv file here
 OUT = open(GenPath + file_name, "w")
 h = headings()
 print(h, file = OUT)
@@ -187,10 +187,10 @@ for i in range(0, sims): # i=sim
     # Decide which parameters to move forward with
     im=med_im
     r=med_r
-    length = np.random.RandomState(seed).uniform(low=np.log(1), high=np.log(1000)) # This parameter determines the scale of your simulations
+    length = np.random.RandomState(seed).uniform(low=np.log(50), high=np.log(100)) # This parameter determines the scale of your simulations
     iterable.append([i, lgp, im, r, np.exp(length), flow_rate])
 
-pool= Pool(processes=10)
+pool= Pool(processes=10) # Adjust this parameter according to your machine's capacity and how many simulations you'd like to run in parallel (keep in mind each sim can use a lot of RAM)
 pool.starmap(run_model, iterable)
 
 
